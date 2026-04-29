@@ -4,6 +4,7 @@ import Dashboard   from './pages/Dashboard'
 import AnalyzePage from './pages/AnalyzePage'
 import AlertsPage  from './pages/AlertsPage'
 import HistoryPage from './pages/HistoryPage'
+import MarketPage  from './pages/MarketPage' // <-- 1. Naya Page Import Kiya
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Route path="/analyze"  element={<AnalyzePage />} />
         <Route path="/alerts"   element={<AlertsPage />} />
         <Route path="/history"  element={<HistoryPage />} />
+        <Route path="/mandi"    element={<MarketPage />} /> {/* <-- 2. Naya Route Add Kiya */}
       </Routes>
     </Layout>
   )

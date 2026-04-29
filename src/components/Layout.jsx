@@ -1,11 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ScanSearch, BellRing, ClockIcon } from 'lucide-react'
+import { LayoutDashboard, ScanSearch, BellRing, ClockIcon, Store } from 'lucide-react' // <-- 1. Store icon import kiya
 import { LeafSVG, PlantSVG } from './LeafIcons'
 import LeafBackground from './LeafBackground'
 import clsx from 'clsx'
 
+// 2. NAV array mein Kisan Mandi add kiya (2nd position par)
 const NAV = [
   { to: '/',        icon: LayoutDashboard, label: 'Dashboard',     desc: 'Farm overview' },
+  { to: '/mandi',   icon: Store,           label: 'Kisan Mandi',   desc: 'Live Market Price' }, // <-- NAYA LINK
   { to: '/analyze', icon: ScanSearch,      label: 'Analyse Field', desc: 'Scan your crop' },
   { to: '/alerts',  icon: BellRing,        label: 'Alerts',        desc: 'Risk events' },
   { to: '/history', icon: ClockIcon,       label: 'History',       desc: 'Past analyses' },
