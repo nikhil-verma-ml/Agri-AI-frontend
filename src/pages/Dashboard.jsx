@@ -2,18 +2,16 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   ArrowRight, Thermometer, AlertTriangle, Droplets, Wind, 
-  CloudRain, Sun, Cloud, Sunrise, Sunset, Activity, CalendarDays, User 
+  CloudRain, Sun, Cloud, Sunrise, Sunset, Activity, CalendarDays, Wheat
 } from 'lucide-react'
-import { ResponsiveContainer, Tooltip, AreaChart, Area } from 'recharts'
+import { ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { LeafSVG, WheatSVG, SunSVG, DropSVG } from '../components/LeafIcons'
-import { useAuth } from '../context/AuthContext'
-import { db } from '../firebaseConfig'
-import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
 import { ScanSearch, Leaf } from 'lucide-react'
+import clsx from 'clsx'
 
-// ── Seasonal Sowing Logic (No API needed, just pure logic) ─────
+// ── Seasonal Sowing Logic ─────
 const getSowingAdvisory = () => {
-  const month = new Date().getMonth(); // 0 = Jan, 3 = April
+  const month = new Date().getMonth();
   if (month >= 2 && month <= 5) return { season: "Zaid (Summer)", crops: "Moong, Urad, Pumpkin, Cucumber" };
   if (month >= 6 && month <= 10) return { season: "Kharif (Monsoon)", crops: "Rice, Maize, Soyabean, Cotton" };
   return { season: "Rabi (Winter)", crops: "Wheat, Mustard, Barley, Peas" };
@@ -52,23 +50,11 @@ function WeatherCard({ icon, label, value, color, desc }) {
   )
 }
 
-// ── Helper for Weather Icons ──────────────────────────────
-const getWeatherIcon = (condition) => {
-  switch(condition) {
-    case 'Rain': return <CloudRain className="w-5 h-5 text-blue-500" />;
-    case 'Clouds': return <Cloud className="w-5 h-5 text-gray-400" />;
-    case 'Clear': return <Sun className="w-5 h-5 text-yellow-500" />;
-    default: return <Cloud className="w-5 h-5 text-gray-400" />;
-  }
-}
-
-// ── Main Dashboard Component ──────────────────────────────
+// ── Main Dashboard Component (AUTH REMOVED) ──────────────────────────────
 export default function Dashboard() {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(new Date());
   const [riskData, setRiskData] = useState([]);
-  const [userData, setUserData] = useState(null);
   const [history, setHistory] = useState([]);
   
   const advisory = getSowingAdvisory();
@@ -84,41 +70,21 @@ export default function Dashboard() {
     const API_KEY = import.meta.env.VITE_WEATHER_API_KEY;
 
     const fetchData = async () => {
-      if (!user) return;
       try {
-        // 1. Fetch User Profile from Firestore
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        let lat = 26.8467; // Default: Lucknow
+        // Default coordinates (Lucknow)
+        let lat = 26.8467;
         let lon = 80.9462;
         
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setUserData(data);
-          if (data.location?.lat && data.location?.lon) {
-            lat = data.location.lat;
-            lon = data.location.lon;
-          }
-        }
+        // Mock data for history since auth is removed
+        setHistory([]);
 
-        // 2. Fetch Recent History
-        const historyQuery = query(
-          collection(db, 'history'),
-          where('userId', '==', user.uid),
-          orderBy('timestamp', 'desc'),
-          limit(3)
-        );
-        const historySnap = await getDocs(historyQuery);
-        setHistory(historySnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
-        // 2. Current Weather + Sun Times
+        // Fetch Weather
         const currRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`);
         const curr = await currRes.json();
 
-        // 3. Air Pollution (AQI)
         const aqiRes = await fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`);
         const aqiData = await aqiRes.json();
 
-        // 4. 5-Day Forecast
         const foreRes = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`);
         const fore = await foreRes.json();
 
@@ -171,23 +137,22 @@ export default function Dashboard() {
     fetchData();
     const t = setInterval(() => setTime(new Date()), 60000);
     return () => { isMounted = false; clearInterval(t); }
-  }, [user]);
+  }, []);
 
   if (loading) return <div className="flex items-center justify-center h-64 animate-pulse"><LeafSVG size={48} color="#3d8b47" /></div>
 
   return (
     <div className="space-y-8 pb-10">
-      {/* ── User Profile Header ──────────────────────────── */}
+      {/* ── User Profile Header (Mocked) ──────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-card p-6 border-b-4 border-[var(--leaf)]">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-[var(--leaf-light)] flex items-center justify-center text-white text-2xl font-bold shadow-inner">
-            {userData?.farmName?.charAt(0) || user.email.charAt(0).toUpperCase()}
+            K
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-stone-800">{userData?.farmName || 'Kisan Mitra'}</h2>
-            <p className="text-sm text-stone-500">{user.email}</p>
+            <h2 className="text-2xl font-bold text-stone-800">Kisan Mitra</h2>
+            <p className="text-sm text-stone-500">Guest User</p>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] font-mono bg-stone-100 text-stone-400 px-2 py-0.5 rounded">UID: {user.uid.slice(0, 8)}...</span>
               <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded uppercase">Verified Farmer</span>
             </div>
           </div>
@@ -278,7 +243,7 @@ export default function Dashboard() {
       {/* ── Forecast & Risks ──────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* Recent Analysis History */}
+        {/* Recent Analysis History (Empty for guest) */}
         <div className="glass-card p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-stone-700 flex items-center gap-2">
@@ -287,30 +252,13 @@ export default function Dashboard() {
             <Link to="/history" className="text-xs font-bold text-[var(--leaf)] hover:underline">View All</Link>
           </div>
           <div className="space-y-4">
-            {history.length > 0 ? history.map((item) => (
-              <div key={item.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-stone-50 transition-colors border border-transparent hover:border-stone-100">
-                <div className={clsx("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", 
-                  item.diseaseDetected === 'Healthy' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600')}>
-                  <Leaf className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-stone-800 truncate">{item.diseaseDetected}</p>
-                  <p className="text-xs text-stone-500 capitalize">{item.locationName} • {new Date(item.timestamp?.toDate()).toLocaleDateString()}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold text-stone-400 uppercase leading-none mb-1">Crop</p>
-                  <p className="text-sm font-bold text-green-700">{item.cropRecommendation}</p>
-                </div>
+            <div className="text-center py-8">
+              <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                 <ScanSearch className="text-stone-300 w-6 h-6" />
               </div>
-            )) : (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                   <ScanSearch className="text-stone-300 w-6 h-6" />
-                </div>
-                <p className="text-sm text-stone-400">No analyses yet.</p>
-                <Link to="/analyze" className="text-xs font-bold text-[var(--leaf)] mt-2 inline-block">Analyze your first field</Link>
-              </div>
-            )}
+              <p className="text-sm text-stone-400">No recent analyses available in guest mode.</p>
+              <Link to="/analyze" className="text-xs font-bold text-[var(--leaf)] mt-2 inline-block">Analyze a crop scan</Link>
+            </div>
           </div>
         </div>
 

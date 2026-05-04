@@ -1,9 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { analyzeField } from '../api/farmer'
-import { useAuth } from '../context/AuthContext'
-import { db } from '../firebaseConfig'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 
 // ── Initial form values ────────────────────────────────────────────────────
 const INITIAL_FORM = {
@@ -32,7 +29,6 @@ function validate(form, imageFile) {
 }
 
 export function useAnalysis() {
-  const { user } = useAuth()
   const [form,           setForm]          = useState(INITIAL_FORM)
   const [imageFile,      setImageFile]     = useState(null)
   const [imagePreview,   setImagePreview]  = useState(null)
@@ -110,20 +106,7 @@ export function useAnalysis() {
 
       setResult(data)
 
-      // Save to Firestore History
-      if (user) {
-        await addDoc(collection(db, 'history'), {
-          userId: user.uid,
-          timestamp: serverTimestamp(),
-          cropRecommendation: data.crop.recommended_crop,
-          diseaseDetected: data.disease.disease,
-          confidence: data.disease.confidence,
-          locationName: form.location_name || 'Detected Location',
-          formSnapshot: { ...form }, // Save input data for reference
-        });
-      }
-
-      toast.success('Analysis complete & saved to history!', { id: toastId })
+      toast.success('Analysis complete!', { id: toastId })
 
       // Scroll to results
       setTimeout(() => {
@@ -137,7 +120,7 @@ export function useAnalysis() {
     } finally {
       setLoading(false)
     }
-  }, [form, imageFile, user])
+  }, [form, imageFile])
 
   return {
     // Form state
