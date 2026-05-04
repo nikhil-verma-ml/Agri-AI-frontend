@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   ArrowRight, Thermometer, AlertTriangle, Droplets, Wind, 
-  CloudRain, Sun, Cloud, Sunrise, Sunset, Activity, CalendarDays, Wheat
+  CloudRain, Sun, Cloud, Sunrise, Sunset, Activity, CalendarDays, Wheat,
+  CloudSun, CloudLightning, Waves
 } from 'lucide-react'
 import { ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { LeafSVG, WheatSVG, SunSVG, DropSVG } from '../components/LeafIcons'
@@ -15,6 +16,17 @@ const getSowingAdvisory = () => {
   if (month >= 2 && month <= 5) return { season: "Zaid (Summer)", crops: "Moong, Urad, Pumpkin, Cucumber" };
   if (month >= 6 && month <= 10) return { season: "Kharif (Monsoon)", crops: "Rice, Maize, Soyabean, Cotton" };
   return { season: "Rabi (Winter)", crops: "Wheat, Mustard, Barley, Peas" };
+};
+
+// ── Weather Icon Helper ─────
+const getWeatherIcon = (condition) => {
+  const c = condition?.toLowerCase() || '';
+  if (c.includes('rain')) return <CloudRain className="w-6 h-6 text-blue-400" />;
+  if (c.includes('clear')) return <Sun className="w-6 h-6 text-yellow-400" />;
+  if (c.includes('cloud') && c.includes('sun')) return <CloudSun className="w-6 h-6 text-stone-400" />;
+  if (c.includes('cloud')) return <Cloud className="w-6 h-6 text-stone-400" />;
+  if (c.includes('storm') || c.includes('lightning')) return <CloudLightning className="w-6 h-6 text-purple-400" />;
+  return <Waves className="w-6 h-6 text-stone-300" />;
 };
 
 // ── Animated counter ──────────────────────────────────────
@@ -50,7 +62,7 @@ function WeatherCard({ icon, label, value, color, desc }) {
   )
 }
 
-// ── Main Dashboard Component (AUTH REMOVED) ──────────────────────────────
+// ── Main Dashboard Component ──────────────────────────────
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(new Date());
@@ -71,14 +83,11 @@ export default function Dashboard() {
 
     const fetchData = async () => {
       try {
-        // Default coordinates (Lucknow)
         let lat = 26.8467;
         let lon = 80.9462;
         
-        // Mock data for history since auth is removed
         setHistory([]);
 
-        // Fetch Weather
         const currRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`);
         const curr = await currRes.json();
 
@@ -143,7 +152,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 pb-10">
-      {/* ── User Profile Header (Mocked) ──────────────────────────── */}
+      {/* ── User Profile Header ──────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-card p-6 border-b-4 border-[var(--leaf)]">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-[var(--leaf-light)] flex items-center justify-center text-white text-2xl font-bold shadow-inner">
@@ -190,9 +199,38 @@ export default function Dashboard() {
         <WeatherCard icon={<CloudRain color="#8b5cf6"/>} label="Precipitation" value={weather.rainProbNow} color="#8b5cf6" desc="Chance of Rain" />
       </div>
 
+      {/* ── 5-Day Agricultural Forecast ────────────────────────── */}
+      <div className="glass-card p-6 overflow-hidden relative">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-stone-700 flex items-center gap-2">
+            <CalendarDays className="text-green-600 w-5 h-5" /> 5-Day Agricultural Forecast
+          </h2>
+          <span className="text-[10px] bg-green-50 text-green-700 px-2 py-1 rounded font-bold uppercase tracking-wider">Plan Your Field Activities</span>
+        </div>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          {weather.forecast.map((day, i) => (
+            <div key={i} className="flex flex-col items-center p-4 rounded-2xl bg-white/40 border border-white/60 hover:bg-white/60 transition-all group animate-slide-up" style={{ animationDelay: `${i * 100}ms` }}>
+              <p className="text-[10px] font-bold text-stone-400 uppercase mb-3">{day.date}</p>
+              <div className="mb-3 transform group-hover:scale-110 transition-transform">
+                {getWeatherIcon(day.weather)}
+              </div>
+              <p className="text-lg font-black text-stone-800">{day.max}°C</p>
+              <p className="text-[10px] text-stone-500 font-medium mb-2">{day.weather}</p>
+              <div className="flex items-center gap-1 mt-auto">
+                <DropSVG size={10} color="#3b82f6" />
+                <span className="text-[10px] font-bold text-blue-500">{day.rain}% Rain</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Decorative elements */}
+        <div className="absolute top-[-20%] right-[-5%] w-32 h-32 bg-green-400/5 rounded-full blur-2xl"></div>
+      </div>
+
       {/* ── Actionable Insights ────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
         {/* Seasonal Sowing Card */}
         <div className="glass-card p-6 border-l-4 border-green-500">
           <div className="flex justify-between items-start mb-4">
@@ -242,8 +280,7 @@ export default function Dashboard() {
 
       {/* ── Forecast & Risks ──────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Recent Analysis History (Empty for guest) */}
+        {/* Recent Analysis History */}
         <div className="glass-card p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-stone-700 flex items-center gap-2">
@@ -277,7 +314,6 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
-
       </div>
     </div>
   )
