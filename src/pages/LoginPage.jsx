@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -26,25 +27,16 @@ const LoginPage = () => {
   const [success, setSuccess] = useState('');
   
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
 
-  // Handle Google Redirect Result
+  // Redirect if already logged in
   useEffect(() => {
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          toast.success('Signed in with Google!');
-          navigate('/');
-        }
-      } catch (err) {
-        console.error("Redirect Error:", err);
-        if (err.code !== 'auth/popup-closed-by-user') {
-          setError('Failed to sign in with Google');
-        }
-      }
-    };
-    checkRedirect();
-  }, [navigate]);
+    if (!authLoading && user) {
+      navigate('/');
+    }
+  }, [user, authLoading, navigate]);
+
+  // Google Redirect Result is now handled globally in AuthContext.jsx
 
   const validateForm = () => {
     if (!email) { setError('Email is required'); return false; }
@@ -205,7 +197,7 @@ const LoginPage = () => {
               <button
                 type="submit"
                 className="btn-primary w-full flex items-center justify-center gap-2 mt-2 group"
-                disabled={isLoading}
+                disabled={isLoading || authLoading}
               >
                 {isLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -231,7 +223,7 @@ const LoginPage = () => {
             <button
               type="button"
               onClick={handleGoogleLogin}
-              disabled={isLoading}
+              disabled={isLoading || authLoading}
               className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-gray-200 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 hover:shadow-md transition-all active:scale-[0.98] disabled:opacity-50"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">

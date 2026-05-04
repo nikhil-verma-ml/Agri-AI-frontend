@@ -84,6 +84,7 @@ export default function Dashboard() {
     const API_KEY = import.meta.env.VITE_WEATHER_API_KEY;
 
     const fetchData = async () => {
+      if (!user) return;
       try {
         // 1. Fetch User Profile from Firestore
         const userDoc = await getDoc(doc(db, 'users', user.uid));
