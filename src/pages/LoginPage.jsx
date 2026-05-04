@@ -5,17 +5,12 @@ import {
   signInWithPopup, 
   sendPasswordResetEmail 
 } from 'firebase/auth';
-import { auth, googleProvider } from '../firebaseConfig';
+import { auth, googleProvider, db } from '../firebaseConfig';
+import { doc, setDoc } from 'firebase/firestore';
+
 import { 
-  Mail, 
-  Lock, 
-  ArrowRight, 
-  Loader2, 
-  AlertCircle,
-  CheckCircle2,
-  Leaf,
-  UserPlus,
-  LogIn
+  Mail, Lock, ArrowRight, Loader2, AlertCircle, 
+  CheckCircle2, Leaf, UserPlus, LogIn 
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -23,31 +18,18 @@ import { useNavigate } from 'react-router-dom';
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false); // Toggle between Login and Sign Up
+  const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
   const navigate = useNavigate();
 
-  // Form Validation
   const validateForm = () => {
-    if (!email) {
-      setError('Email is required');
-      return false;
-    }
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setError('Please enter a valid email address');
-      return false;
-    }
-    if (!password) {
-      setError('Password is required');
-      return false;
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return false;
-    }
+    if (!email) { setError('Email is required'); return false; }
+    if (!/\S+@\S+\.\S+/.test(email)) { setError('Invalid email'); return false; }
+    if (!password) { setError('Password is required'); return false; }
+    if (password.length < 6) { setError('Min 6 chars'); return false; }
     return true;
   };
 
@@ -62,7 +44,18 @@ const LoginPage = () => {
     setIsLoading(true);
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Create User Profile in Firestore
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          email: user.email,
+          createdAt: new Date(),
+          farmName: 'My Farm', // Default
+          location: { lat: 26.8467, lon: 80.9462 } // Default Lucknow
+        });
+
         setSuccess('Account created! Welcome to AgriAI.');
         toast.success('Account created successfully!');
       } else {

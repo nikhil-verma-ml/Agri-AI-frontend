@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   ArrowRight, Thermometer, AlertTriangle, Droplets, Wind, 
-  CloudRain, Sun, Cloud, Sunrise, Sunset, Activity, CalendarDays 
+  CloudRain, Sun, Cloud, Sunrise, Sunset, Activity, CalendarDays, User 
 } from 'lucide-react'
 import { ResponsiveContainer, Tooltip, AreaChart, Area } from 'recharts'
 import { LeafSVG, WheatSVG, SunSVG, DropSVG } from '../components/LeafIcons'
-import { fetchDashboard } from '../api/farmer'
+import { useAuth } from '../context/AuthContext'
+import { db } from '../firebaseConfig'
+import { doc, getDoc } from 'firebase/firestore'
 
 // ── Seasonal Sowing Logic (No API needed, just pure logic) ─────
 const getSowingAdvisory = () => {
@@ -61,9 +63,11 @@ const getWeatherIcon = (condition) => {
 
 // ── Main Dashboard Component ──────────────────────────────
 export default function Dashboard() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(new Date());
   const [riskData, setRiskData] = useState([]);
+  const [userData, setUserData] = useState(null);
   
   const advisory = getSowingAdvisory();
 
@@ -76,28 +80,37 @@ export default function Dashboard() {
   useEffect(() => {
     let isMounted = true;
     const API_KEY = import.meta.env.VITE_WEATHER_API_KEY;
-    const lat = 26.8467; // Lucknow, UP
-    const lon = 80.9462;
 
     const fetchData = async () => {
       try {
-        // 1. Current Weather + Sun Times
+        // 1. Fetch User Profile from Firestore
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        let lat = 26.8467; // Default: Lucknow
+        let lon = 80.9462;
+        
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setUserData(data);
+          if (data.location?.lat && data.location?.lon) {
+            lat = data.location.lat;
+            lon = data.location.lon;
+          }
+        }
+
+        // 2. Current Weather + Sun Times
         const currRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`);
         const curr = await currRes.json();
 
-        // 2. Air Pollution (AQI)
+        // 3. Air Pollution (AQI)
         const aqiRes = await fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`);
         const aqiData = await aqiRes.json();
 
-        // 3. 5-Day Forecast
+        // 4. 5-Day Forecast
         const foreRes = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`);
         const fore = await foreRes.json();
 
         if (isMounted) {
-          // Process Chart Data (Humidity trend)
           const humidityHistory = fore.list.slice(0, 10).map((item, idx) => ({ i: idx, v: item.main.humidity }));
-          
-          // Process Forecast
           const daily = {};
           fore.list.forEach(item => {
             const date = item.dt_txt.split(' ')[0];
@@ -126,10 +139,10 @@ export default function Dashboard() {
             forecast: formattedForecast,
             chartData: humidityHistory,
             rainProbNow: Math.round(fore.list[0].pop * 100) + '%',
+            locationName: curr.name,
             isLoaded: true
           });
 
-          // Fetch local risks (or set smart risks based on weather)
           setRiskData([
             { level: 'high', message: curr.main.humidity > 70 ? 'High Humidity: Risk of Fungal infection increased.' : 'Soil nitrogen check recommended.' },
             { level: 'medium', message: 'Optimized spraying window: Next 4 hours (Low Wind).' }
@@ -137,7 +150,7 @@ export default function Dashboard() {
           setLoading(false);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Dashboard Fetch Error:", err);
         setLoading(false);
       }
     };
@@ -145,7 +158,7 @@ export default function Dashboard() {
     fetchData();
     const t = setInterval(() => setTime(new Date()), 60000);
     return () => { isMounted = false; clearInterval(t); }
-  }, []);
+  }, [user]);
 
   if (loading) return <div className="flex items-center justify-center h-64 animate-pulse"><LeafSVG size={48} color="#3d8b47" /></div>
 

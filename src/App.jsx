@@ -1,4 +1,6 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import Dashboard   from './pages/Dashboard'
 import AnalyzePage from './pages/AnalyzePage'
@@ -11,24 +13,46 @@ export default function App() {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
 
-  const AppRoutes = (
-    <Routes>
-      <Route path="/login"    element={<LoginPage />} />
-      <Route path="/"         element={<Dashboard />} />
-      <Route path="/analyze"  element={<AnalyzePage />} />
-      <Route path="/alerts"   element={<AlertsPage />} />
-      <Route path="/history"  element={<HistoryPage />} />
-      <Route path="/mandi"    element={<MarketPage />} />
-    </Routes>
-  );
-
-  if (isLoginPage) {
-    return AppRoutes;
-  }
-
   return (
-    <Layout>
-      {AppRoutes}
-    </Layout>
-  )
+    <AuthProvider>
+      <Routes>
+        {/* Public Route */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Protected Routes */}
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Layout><Dashboard /></Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/mandi" element={
+          <ProtectedRoute>
+            <Layout><MarketPage /></Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/analyze" element={
+          <ProtectedRoute>
+            <Layout><AnalyzePage /></Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/alerts" element={
+          <ProtectedRoute>
+            <Layout><AlertsPage /></Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/history" element={
+          <ProtectedRoute>
+            <Layout><HistoryPage /></Layout>
+          </ProtectedRoute>
+        } />
+
+        {/* Catch-all redirect to dashboard */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
+  );
 }
