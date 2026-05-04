@@ -10,34 +10,32 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Check for redirect result first
-    const checkRedirect = async () => {
+    let isMounted = true;
+    let unsubscribe = () => {};
+
+    const initAuth = async () => {
       try {
         const result = await getRedirectResult(auth);
-        if (result) {
-          console.log("AuthContext: Redirect login success", result.user.email);
+        if (result && isMounted) {
           setUser(result.user);
-          toast.success('Welcome back!');
         }
       } catch (error) {
         console.error("AuthContext: Redirect Error", error);
-        // Don't show toast for "no redirect result" errors, only real ones
-        if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-          toast.error("Auth redirect failed. Please try again.");
+      } finally {
+        if (isMounted) {
+          unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+            setLoading(false);
+          });
         }
       }
     };
 
-    checkRedirect();
-
-    // 2. Listen for auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      console.log("AuthContext: Auth State Changed", currentUser?.email || 'Logged Out');
-      setUser(currentUser);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    initAuth();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   return (
