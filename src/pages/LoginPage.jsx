@@ -2,17 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signInWithRedirect,
+  signInWithPopup, // 👈 Redirect ki jagah Popup use kar rahe hain
   setPersistence,
-  browserLocalPersistence,
-  getRedirectResult,
-  sendPasswordResetEmail 
+  browserLocalPersistence
 } from 'firebase/auth';
 import { auth, googleProvider, db } from '../firebaseConfig';
 import { doc, setDoc } from 'firebase/firestore';
 
 import { 
-  Mail, Lock, ArrowRight, Loader2, AlertCircle, 
+  Mail, Lock, Loader2, AlertCircle, 
   CheckCircle2, Leaf, UserPlus, LogIn 
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -37,8 +35,6 @@ const LoginPage = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Google Redirect Result is now handled globally in AuthContext.jsx
-
   const validateForm = () => {
     if (!email) { setError('Email is required'); return false; }
     if (!/\S+@\S+\.\S+/.test(email)) { setError('Invalid email'); return false; }
@@ -47,7 +43,7 @@ const LoginPage = () => {
     return true;
   };
 
-  // Auth Handler (Login or Sign Up)
+  // Email/Password Auth Handler
   const handleAuth = async (e) => {
     e.preventDefault();
     setError('');
@@ -59,15 +55,15 @@ const LoginPage = () => {
     try {
       if (isSignUp) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+        const currentUser = userCredential.user;
         
         // Create User Profile in Firestore
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: user.email,
+        await setDoc(doc(db, 'users', currentUser.uid), {
+          uid: currentUser.uid,
+          email: currentUser.email,
           createdAt: new Date(),
-          farmName: 'My Farm', // Default
-          location: { lat: 26.8467, lon: 80.9462 } // Default Lucknow
+          farmName: 'My Farm',
+          location: { lat: 26.8467, lon: 80.9462 }
         });
 
         setSuccess('Account created! Welcome to AgriAI.');
@@ -97,30 +93,37 @@ const LoginPage = () => {
     }
   };
 
-  // Google Social Auth
+  // Google Social Auth 👈 YEH FIX KIYA HAI
   const handleGoogleLogin = async () => {
     setError('');
     setIsLoading(true);
     try {
-      // Ensure persistence is set before redirect
+      // 1. Ensure persistence is set before popup
       await setPersistence(auth, browserLocalPersistence);
-      // In production (Vercel), Redirect is more reliable than Popup
-      await signInWithRedirect(auth, googleProvider);
+      
+      // 2. Use Popup to prevent app reload loop on Vercel
+      await signInWithPopup(auth, googleProvider);
+      
+      toast.success('Google login successful!');
+      navigate('/'); // Popup close hone ke baad seedha dashboard
+      
     } catch (err) {
       console.error(err);
-      setError('Google sign-in failed');
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError('Google sign-in failed');
+        toast.error('Google sign-in failed');
+      }
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--cream)] overflow-hidden relative">
-      {/* Background Decorative Elements */}
       <div className="absolute top-[-10%] left-[-5%] w-64 h-64 bg-[var(--leaf-light)] opacity-10 rounded-full blur-3xl animate-pulse"></div>
       <div className="absolute bottom-[-10%] right-[-5%] w-96 h-96 bg-[var(--harvest)] opacity-10 rounded-full blur-3xl animate-pulse"></div>
       
       <div className="w-full max-w-md animate-slide-up">
-        {/* Logo Section */}
         <div className="text-center mb-8 flex flex-col items-center">
           <div className="w-16 h-16 bg-[var(--leaf)] rounded-2xl flex items-center justify-center shadow-lg mb-4 animate-float">
             <Leaf className="text-white w-10 h-10" />
@@ -129,14 +132,12 @@ const LoginPage = () => {
           <p className="text-gray-500 font-medium">Empowering Farmers with Intelligence</p>
         </div>
 
-        {/* Main Card */}
         <div className="glass-card p-8 relative overflow-hidden">
           <div className="relative z-10">
             <h2 className="text-xl font-semibold text-[var(--bark)] mb-6">
               {isSignUp ? 'Create New Account' : 'Sign In'}
             </h2>
 
-            {/* Error Message */}
             {error && (
               <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm flex items-center gap-2 animate-fade-in">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -144,7 +145,6 @@ const LoginPage = () => {
               </div>
             )}
 
-            {/* Success Message */}
             {success && (
               <div className="mb-6 p-3 bg-green-50 border border-green-200 text-green-600 rounded-lg text-sm flex items-center gap-2 animate-fade-in">
                 <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
@@ -153,7 +153,6 @@ const LoginPage = () => {
             )}
 
             <form onSubmit={handleAuth} className="space-y-5">
-              {/* Email Field */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-gray-700 ml-1">Email Address</label>
                 <div className="relative">
@@ -169,7 +168,6 @@ const LoginPage = () => {
                 </div>
               </div>
 
-              {/* Password Field */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center px-1">
                   <label className="text-sm font-semibold text-gray-700">Password</label>
@@ -196,7 +194,6 @@ const LoginPage = () => {
                 </div>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 className="btn-primary w-full flex items-center justify-center gap-2 mt-2 group"
@@ -222,7 +219,6 @@ const LoginPage = () => {
               </div>
             </div>
 
-            {/* Google Login */}
             <button
               type="button"
               onClick={handleGoogleLogin}
@@ -242,7 +238,6 @@ const LoginPage = () => {
           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-[var(--leaf-mid)] opacity-5 rounded-full blur-2xl"></div>
         </div>
 
-        {/* Footer Link */}
         <p className="text-center mt-8 text-sm text-gray-600">
           {isSignUp ? 'Already have an account?' : 'New to AgriAI?'}
           {' '}

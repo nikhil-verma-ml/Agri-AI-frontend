@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, getRedirectResult } from 'firebase/auth';
-import { toast } from 'react-hot-toast';
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 
 const AuthContext = createContext();
@@ -10,37 +9,20 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-    let unsubscribe = () => {};
+    // Sirf onAuthStateChanged kaafi hai popup ke baad state update karne ke liye
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
 
-    const initAuth = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result && isMounted) {
-          setUser(result.user);
-        }
-      } catch (error) {
-        console.error("AuthContext: Redirect Error", error);
-      } finally {
-        if (isMounted) {
-          unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
-            setLoading(false);
-          });
-        }
-      }
-    };
-
-    initAuth();
-    return () => {
-      isMounted = false;
-      unsubscribe();
-    };
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
-      {!loading && children}
+      {/* Loading state handle ho rahi hai taaki redirect loop na bane */}
+      {!loading && children} 
     </AuthContext.Provider>
   );
 };
