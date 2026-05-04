@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signInWithPopup, // 👈 Redirect ki jagah Popup use kar rahe hain
-  setPersistence,
-  browserLocalPersistence
+  signInWithPopup 
 } from 'firebase/auth';
 import { auth, googleProvider, db } from '../firebaseConfig';
 import { doc, setDoc } from 'firebase/firestore';
@@ -93,19 +91,16 @@ const LoginPage = () => {
     }
   };
 
-  // Google Social Auth 👈 YEH FIX KIYA HAI
+  // Google Social Auth - FIXED
   const handleGoogleLogin = async () => {
     setError('');
     setIsLoading(true);
     try {
-      // 1. Ensure persistence is set before popup
-      await setPersistence(auth, browserLocalPersistence);
-      
-      // 2. Use Popup to prevent app reload loop on Vercel
+      // Direct popup call without any preceding awaits to prevent blocking
       await signInWithPopup(auth, googleProvider);
       
       toast.success('Google login successful!');
-      navigate('/'); // Popup close hone ke baad seedha dashboard
+      navigate('/'); 
       
     } catch (err) {
       console.error(err);
