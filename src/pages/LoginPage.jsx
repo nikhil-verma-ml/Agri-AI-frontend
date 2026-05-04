@@ -3,6 +3,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   sendPasswordResetEmail 
 } from 'firebase/auth';
 import { auth, googleProvider, db } from '../firebaseConfig';
@@ -24,6 +26,25 @@ const LoginPage = () => {
   const [success, setSuccess] = useState('');
   
   const navigate = useNavigate();
+
+  // Handle Google Redirect Result
+  useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          toast.success('Signed in with Google!');
+          navigate('/');
+        }
+      } catch (err) {
+        console.error("Redirect Error:", err);
+        if (err.code !== 'auth/popup-closed-by-user') {
+          setError('Failed to sign in with Google');
+        }
+      }
+    };
+    checkRedirect();
+  }, [navigate]);
 
   const validateForm = () => {
     if (!email) { setError('Email is required'); return false; }
@@ -88,16 +109,11 @@ const LoginPage = () => {
     setError('');
     setIsLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
-      toast.success('Signed in with Google!');
-      navigate('/'); // Immediate redirect for social login
+      // In production (Vercel), Redirect is often more reliable than Popup
+      await signInWithRedirect(auth, googleProvider);
     } catch (err) {
       console.error(err);
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError('Failed to sign in with Google');
-        toast.error('Google sign-in failed');
-      }
-    } finally {
+      setError('Google sign-in failed');
       setIsLoading(false);
     }
   };
