@@ -8,7 +8,8 @@ import { ResponsiveContainer, Tooltip, AreaChart, Area } from 'recharts'
 import { LeafSVG, WheatSVG, SunSVG, DropSVG } from '../components/LeafIcons'
 import { useAuth } from '../context/AuthContext'
 import { db } from '../firebaseConfig'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
+import { ScanSearch, Leaf } from 'lucide-react'
 
 // ── Seasonal Sowing Logic (No API needed, just pure logic) ─────
 const getSowingAdvisory = () => {
@@ -68,6 +69,7 @@ export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [riskData, setRiskData] = useState([]);
   const [userData, setUserData] = useState(null);
+  const [history, setHistory] = useState([]);
   
   const advisory = getSowingAdvisory();
 
@@ -96,6 +98,16 @@ export default function Dashboard() {
             lon = data.location.lon;
           }
         }
+
+        // 2. Fetch Recent History
+        const historyQuery = query(
+          collection(db, 'history'),
+          where('userId', '==', user.uid),
+          orderBy('timestamp', 'desc'),
+          limit(3)
+        );
+        const historySnap = await getDocs(historyQuery);
+        setHistory(historySnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
         // 2. Current Weather + Sun Times
         const currRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`);
@@ -164,15 +176,39 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 pb-10">
+      {/* ── User Profile Header ──────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-card p-6 border-b-4 border-[var(--leaf)]">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--leaf-light)] flex items-center justify-center text-white text-2xl font-bold shadow-inner">
+            {userData?.farmName?.charAt(0) || user.email.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-stone-800">{userData?.farmName || 'Kisan Mitra'}</h2>
+            <p className="text-sm text-stone-500">{user.email}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] font-mono bg-stone-100 text-stone-400 px-2 py-0.5 rounded">UID: {user.uid.slice(0, 8)}...</span>
+              <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded uppercase">Verified Farmer</span>
+            </div>
+          </div>
+        </div>
+        <div className="text-right hidden md:block">
+          <p className="text-xs text-stone-400 font-bold uppercase mb-1">Current Focus</p>
+          <div className="flex items-center gap-2 text-stone-700 font-semibold">
+            <Wheat className="w-4 h-4 text-[var(--harvest)]" />
+            {advisory.season} Crop Care
+          </div>
+        </div>
+      </div>
+
       {/* ── Hero Banner ──────────────────────────────────── */}
       <div className="relative rounded-3xl overflow-hidden p-8 text-white shadow-2xl"
         style={{ background: 'linear-gradient(135deg, #1a3d1f 0%, #2d6a35 100%)' }}>
         <div className="relative z-10">
           <p className="text-green-300 text-xs font-bold uppercase tracking-widest mb-2">
-            {time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Lucknow Sector
+            {time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • {weather.locationName || 'Local Sector'}
           </p>
           <h1 className="font-display text-4xl mb-2">Field Intelligence</h1>
-          <p className="text-green-100/70 text-sm max-w-lg">Monitoring real-time environmental factors to maximize your {advisory.season} crop yield.</p>
+          <p className="text-green-100/70 text-sm max-w-lg">Monitoring factors for your {advisory.season} yields. Last synced: {new Date().toLocaleTimeString()}</p>
           <Link to="/analyze" className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl font-bold transition-all">
             Start AI Plant Scan <ArrowRight className="w-4 h-4" />
           </Link>
@@ -241,6 +277,42 @@ export default function Dashboard() {
       {/* ── Forecast & Risks ──────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
+        {/* Recent Analysis History */}
+        <div className="glass-card p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-stone-700 flex items-center gap-2">
+              <Activity className="text-blue-500" /> Recent Activity
+            </h2>
+            <Link to="/history" className="text-xs font-bold text-[var(--leaf)] hover:underline">View All</Link>
+          </div>
+          <div className="space-y-4">
+            {history.length > 0 ? history.map((item) => (
+              <div key={item.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-stone-50 transition-colors border border-transparent hover:border-stone-100">
+                <div className={clsx("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", 
+                  item.diseaseDetected === 'Healthy' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600')}>
+                  <Leaf className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-stone-800 truncate">{item.diseaseDetected}</p>
+                  <p className="text-xs text-stone-500 capitalize">{item.locationName} • {new Date(item.timestamp?.toDate()).toLocaleDateString()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-stone-400 uppercase leading-none mb-1">Crop</p>
+                  <p className="text-sm font-bold text-green-700">{item.cropRecommendation}</p>
+                </div>
+              </div>
+            )) : (
+              <div className="text-center py-8">
+                <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                   <ScanSearch className="text-stone-300 w-6 h-6" />
+                </div>
+                <p className="text-sm text-stone-400">No analyses yet.</p>
+                <Link to="/analyze" className="text-xs font-bold text-[var(--leaf)] mt-2 inline-block">Analyze your first field</Link>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* AI Alerts */}
         <div className="glass-card p-6">
           <h2 className="text-xl font-bold text-stone-700 mb-6 flex items-center gap-2"><AlertTriangle className="text-amber-500" /> AI Farm Alerts</h2>
@@ -255,23 +327,6 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Forecast */}
-        <div className="glass-card p-6">
-           <h2 className="text-xl font-bold text-stone-700 mb-6 flex items-center gap-2">🌦 5-Day Forecast</h2>
-           <div className="space-y-3">
-             {weather.forecast.map((day, i) => (
-               <div key={i} className="flex justify-between items-center py-2 border-b border-stone-50 last:border-0">
-                  <p className="text-sm font-bold text-stone-600 w-24">{day.date}</p>
-                  <div className="flex items-center gap-2 w-20">
-                    {getWeatherIcon(day.weather)}
-                    <span className="text-[10px] font-bold text-blue-500">{day.rain}%</span>
-                  </div>
-                  <p className="text-sm font-black text-stone-800">{day.max}°C</p>
-               </div>
-             ))}
-           </div>
         </div>
 
       </div>
