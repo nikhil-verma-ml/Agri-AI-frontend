@@ -1,13 +1,14 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ScanSearch, BellRing, ClockIcon, Store } from 'lucide-react' // <-- 1. Store icon import kiya
+import { LayoutDashboard, ScanSearch, BellRing, ClockIcon, Store } from 'lucide-react'
 import { LeafSVG, PlantSVG } from './LeafIcons'
 import LeafBackground from './LeafBackground'
+import FarmerChat from './FarmerChat'
 import clsx from 'clsx'
 
 // 2. NAV array mein Kisan Mandi add kiya (2nd position par)
 const NAV = [
   { to: '/',        icon: LayoutDashboard, label: 'Dashboard',     desc: 'Farm overview' },
-  { to: '/mandi',   icon: Store,           label: 'Kisan Mandi',   desc: 'Live Market Price' }, // <-- NAYA LINK
+  { to: '/mandi',   icon: Store,           label: 'Kisan Mandi',   desc: 'Live Market Price' },
   { to: '/analyze', icon: ScanSearch,      label: 'Analyse Field', desc: 'Scan your crop' },
   { to: '/alerts',  icon: BellRing,        label: 'Alerts',        desc: 'Risk events' },
   { to: '/history', icon: ClockIcon,       label: 'History',       desc: 'Past analyses' },
@@ -119,7 +120,10 @@ export default function Layout({ children }) {
         <div className="max-w-5xl mx-auto px-8 py-8">
           {children}
         </div>
+
+        {/* Global LLM Chat Icon */}
+        <FarmerChat />
       </main>
     </div>
   )
-}
+}
