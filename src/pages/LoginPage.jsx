@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signInWithPopup, 
   signInWithRedirect,
+  setPersistence,
+  browserLocalPersistence,
   getRedirectResult,
   sendPasswordResetEmail 
 } from 'firebase/auth';
@@ -101,7 +102,9 @@ const LoginPage = () => {
     setError('');
     setIsLoading(true);
     try {
-      // In production (Vercel), Redirect is often more reliable than Popup
+      // Ensure persistence is set before redirect
+      await setPersistence(auth, browserLocalPersistence);
+      // In production (Vercel), Redirect is more reliable than Popup
       await signInWithRedirect(auth, googleProvider);
     } catch (err) {
       console.error(err);
@@ -161,7 +164,7 @@ const LoginPage = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     className={`field-input pl-10 ${error && !email ? 'error' : ''}`}
                     placeholder="farmer@example.com"
-                    disabled={isLoading}
+                    disabled={isLoading || authLoading}
                   />
                 </div>
               </div>
@@ -188,7 +191,7 @@ const LoginPage = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     className={`field-input pl-10 ${error && !password ? 'error' : ''}`}
                     placeholder="••••••••"
-                    disabled={isLoading}
+                    disabled={isLoading || authLoading}
                   />
                 </div>
               </div>
